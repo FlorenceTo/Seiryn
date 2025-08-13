@@ -1,8 +1,8 @@
 let shapes = [];
 let keyMap = {};
 
-// Enigmatic scale (C, D♭, E, F♯, G♯, A♯, B, C)
-let baseFreq = 261.63; // Middle C
+// Enigmatic scale (C, D♭, E, F♯, G♯, A♯, B, C) — one octave down
+let baseFreq = 130.81; // C3
 let scaleRatios = [
   1,                 // C
   Math.pow(2, 1/12), // D♭
@@ -34,14 +34,14 @@ function setup() {
 }
 
 function draw() {
-  background(0);
+  background(0, 30); // slight persistence for dreamy trails
 
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
 
-    // Move shapes
-    s.x += s.vx;
-    s.y += s.vy;
+    // Move shapes slowly
+    s.x += s.vx * 0.5;
+    s.y += s.vy * 0.5;
     if (s.x < 0 || s.x > width) s.vx *= -1;
     if (s.y < 0 || s.y > height) s.vy *= -1;
 
@@ -54,29 +54,29 @@ function draw() {
       s.currentNoteIndex = (s.currentNoteIndex + 1) % s.scaleNotes.length;
     }
 
-    // Vibrato
-    let vibrato = sin(frameCount * 0.05 + s.offset) * 5;
+    // Vibrato for dreamy wavering
+    let vibrato = sin(frameCount * 0.03 + s.offset) * 10;
     s.osc.freq(s.currentFreq + vibrato);
 
     // Trail
     s.trail.push({ x: s.x, y: s.y, opacity: s.opacity });
-    if (s.trail.length > 20) s.trail.shift();
+    if (s.trail.length > 30) s.trail.shift();
     for (let t of s.trail) {
       fill(s.color[0], s.color[1], s.color[2], t.opacity);
       if (s.type === 'circle') ellipse(t.x, t.y, 20);
       else rect(t.x - 10, t.y - 10, 20, 20);
-      t.opacity -= 10;
+      t.opacity -= 8;
     }
 
-    // Main shape
+    // Main shape with smooth size mapping
     fill(s.color[0], s.color[1], s.color[2], s.opacity);
-    let size = map(s.currentFreq, 200, 800, 30, 100);
+    let size = map(s.currentFreq, 100, 400, 40, 120);
     if (s.type === 'circle') ellipse(s.x, s.y, size);
     else rect(s.x - size/2, s.y - size/2, size, size);
 
-    s.opacity -= 0.5;
+    s.opacity -= 0.3;
     if (s.opacity <= 0) {
-      s.osc.amp(0, 0.2);
+      s.osc.amp(0, 0.5);
       s.osc.stop();
       shapes.splice(i, 1);
     }
@@ -96,14 +96,13 @@ function keyPressed() {
   osc.start();
   osc.amp(0.5, 0.05);
 
-  // Precompute scale notes for this shape
   let scaleNotes = scaleRatios.map(r => config.freq * r);
 
   let s = {
     x: random(width),
     y: random(height),
-    vx: random(-3, 3),
-    vy: random(-3, 3),
+    vx: random(-2, 2),
+    vy: random(-2, 2),
     type: config.type,
     currentFreq: config.freq,
     scaleNotes: scaleNotes,
