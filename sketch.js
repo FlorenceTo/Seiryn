@@ -33,19 +33,19 @@ function draw() {
     for (let t of s.trail) {
       fill(255, t.opacity);
       ellipse(t.x, t.y, 20 * ampScale);
-      t.opacity -= 8;
+      t.opacity -= 6; // slower fade for longer trails
     }
 
     // Glow
     if (s.glow > 0) {
-      fill(255, 50, 50, s.glow); // red glow
-      ellipse(s.x, s.y, 34 * ampScale);
-      s.glow *= 0.95;
+      fill(255, 50, 50, s.glow); // stronger red glow
+      ellipse(s.x, s.y, 36 * ampScale); // slightly bigger glow
+      s.glow *= 0.92; // slower decay for more lingering glow
     }
 
-    // Shape outline (1px)
+    // Shape outline (1.5px for more visibility)
     stroke(255);
-    strokeWeight(1);
+    strokeWeight(1.5);
     fill(255, s.opacity);
     ellipse(s.x, s.y, 30 * ampScale);
     noStroke();
@@ -94,14 +94,10 @@ function keyPressed() {
     amp: amp,
     opacity: 255,
     trail: [],
-    glow: 200 // slightly stronger red glow
+    glow: 250 // stronger and more persistent glow
   };
 
   shapes.push(s);
-}
-
-function keyReleased() {
-  // fade handled in draw
 }
 
 function windowResized() {
