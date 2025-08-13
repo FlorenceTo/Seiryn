@@ -1,17 +1,17 @@
 let shapes = [];
 let keyMap = {};
-
-// Create key mappings for A-Z
 let letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+// Map each key
 letters.split('').forEach((letter, i) => {
   keyMap[letter] = {
-    type: i % 2 === 0 ? 'circle' : 'square',  // alternate shape types
+    type: i % 2 === 0 ? 'circle' : 'square',
     color: [
       random(150, 255), 
-      random(150), 
-      random(150)
-    ],  // variations of red, green, white
-    freq: random(200, 600) // base frequency for each key
+      random(150, 255), 
+      random(150, 255)
+    ],
+    baseFreq: random(200, 600)
   };
 });
 
@@ -27,29 +27,36 @@ function draw() {
 
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
-    
+
     // Move shapes
     s.x += s.vx;
     s.y += s.vy;
 
-    // Keep shapes inside canvas
+    // Keep inside canvas
     if (s.x < 0 || s.x > width) s.vx *= -1;
     if (s.y < 0 || s.y > height) s.vy *= -1;
 
-    // Draw trail
+    // Pitch modulation
+    let freqOffset = sin(frameCount * 0.02 + s.offset) * 50;
+    s.osc.freq(s.baseFreq + freqOffset);
+
+    // Size changes with pitch
+    let size = map(s.baseFreq + freqOffset, 150, 650, 20, 80);
+
+    // Trail
     s.trail.push({x: s.x, y: s.y, opacity: s.opacity});
     if (s.trail.length > 20) s.trail.shift();
     for (let t of s.trail) {
       fill(s.color[0], s.color[1], s.color[2], t.opacity);
-      if (s.type === 'circle') ellipse(t.x, t.y, 20);
-      else rect(t.x, t.y, 20, 20);
-      t.opacity -= 10;
+      if (s.type === 'circle') ellipse(t.x, t.y, size*0.5);
+      else rect(t.x, t.y, size*0.5, size*0.5);
+      t.opacity -= 8;
     }
 
     // Fade out
-    s.opacity -= 2;
+    s.opacity -= 1;
     if (s.opacity <= 0) {
-      s.osc.amp(0, 0.2);
+      s.osc.amp(0, 0.5);
       s.osc.stop();
       shapes.splice(i, 1);
       continue;
@@ -57,8 +64,8 @@ function draw() {
 
     // Draw main shape
     fill(s.color[0], s.color[1], s.color[2], s.opacity);
-    if (s.type === 'circle') ellipse(s.x, s.y, 30);
-    else rect(s.x, s.y, 30, 30);
+    if (s.type === 'circle') ellipse(s.x, s.y, size);
+    else rect(s.x, s.y, size, size);
   }
 }
 
@@ -69,10 +76,17 @@ function keyPressed() {
   if (!keyMap[k]) return;
 
   let config = keyMap[k];
-  let osc = new p5.Oscillator('triangle');
-  osc.freq(config.freq);
+  let oscType = config.type === 'circle' ? 'triangle' : 'sine';
+  let osc = new p5.Oscillator(oscType);
+  osc.freq(config.baseFreq);
   osc.start();
-  osc.amp(0.5, 0.05);
+  osc.amp(0.5, 0.1);
+
+  // Add delay and reverb for dreamy sound
+  let delay = new p5.Delay();
+  delay.process(osc, 0.3, 0.4, 2000);
+  let reverb = new p5.Reverb();
+  reverb.process(osc, 3, 2);
 
   let s = {
     x: random(width),
@@ -81,6 +95,8 @@ function keyPressed() {
     vy: random(-2, 2),
     type: config.type,
     color: config.color,
+    baseFreq: config.baseFreq,
+    offset: random(TWO_PI),
     opacity: 255,
     trail: [],
     osc: osc
