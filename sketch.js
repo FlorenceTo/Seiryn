@@ -1,7 +1,9 @@
 let shapes = [];
 let texts = [];
-let noise, filterLFO, delay, reverb;
-let activeKeys = {}; // Track keys currently pressed
+let activeKeys = {};
+
+let noise, filterLFO;
+let bongoEnv, bongoOsc, bongoDelay;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -9,45 +11,43 @@ function setup() {
   textAlign(CENTER, CENTER);
   textSize(32);
 
-  texts.push({text: "Press and Hold Keys", alpha: 255});
+  texts.push({ text: "Press Keys", alpha: 255 });
 
-  // White noise for metallic/granular sound
+  // Granular metallic noise (plain now)
   noise = new p5.Noise('white');
   noise.start();
   noise.amp(0); // start silent
 
-  // Lowpass filter for timbre modulation
   filterLFO = new p5.Filter('lowpass');
   noise.disconnect();
   noise.connect(filterLFO);
 
-  // Tiny delay/feedback for metallic feel
-  delay = new p5.Delay();
-  filterLFO.disconnect();
-  filterLFO.connect(delay);
-  delay.process(filterLFO, 0.2, 0.2, 2300);
+  // Bongo percussive sound
+  bongoOsc = new p5.Oscillator('triangle');
+  bongoOsc.start();
+  bongoOsc.amp(0);
+  bongoEnv = new p5.Envelope();
+  bongoEnv.setADSR(0.001, 0.2, 0, 0.2);
+  bongoEnv.setRange(0.5, 0);
 
-  // Reverb for spacious sound
-  reverb = new p5.Reverb();
-  delay.disconnect();
-  delay.connect(reverb);
-  reverb.process(delay, 3, 2); // reverb with decay 3s, pre-delay 2s
+  // Short delay for bongo
+  bongoDelay = new p5.Delay();
+  bongoOsc.disconnect();
+  bongoOsc.connect(bongoDelay);
+  bongoDelay.process(bongoOsc, 0.15, 0.3, 2300);
 }
 
 function draw() {
-  background(0, 50); // trail effect
+  background(0, 50); // trail
 
-  // Draw fading shapes
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
     fill(s.color[0], s.color[1], s.color[2], s.alpha);
     ellipse(s.x, s.y, s.size);
-
     s.alpha -= s.fadeRate;
     if (s.alpha <= 0) shapes.splice(i, 1);
   }
 
-  // Draw fading text
   for (let t of texts) {
     fill(255, t.alpha);
     text(t.text, width / 2, 100);
@@ -55,23 +55,26 @@ function draw() {
   }
 }
 
-// Start sound when key is pressed
+// Key pressed
 function keyPressed() {
   userStartAudio();
-
-  // Only start if key is not already active
   if (!activeKeys[key]) {
-    let pan = map(mouseX, 0, width, -1, 1);
-    noise.pan(pan);
-
-    // Random filter modulation for metallic timbre
-    filterLFO.freq(random(300, 1500));
-    filterLFO.res(random(0.5, 5));
-
-    noise.amp(0.5, 0.05); // attack
     activeKeys[key] = true;
 
-    // Add a new shape for visual feedback
+    if ('ASDF'.includes(key.toUpperCase())) {
+      // Bongo mid-frequency
+      bongoOsc.freq(random(300, 600));
+      bongoEnv.play(bongoOsc);
+    } else {
+      // Plain metallic granular noise
+      let pan = map(mouseX, 0, width, -1, 1);
+      noise.pan(pan);
+      filterLFO.freq(random(300, 1500));
+      filterLFO.res(random(0.5, 5));
+      noise.amp(1.0, 0.05); // louder
+    }
+
+    // Visual feedback
     let colors = [
       [255, 0, 0],
       [0, 255, 0],
@@ -89,10 +92,12 @@ function keyPressed() {
   }
 }
 
-// Stop sound when key is released
+// Key released
 function keyReleased() {
   if (activeKeys[key]) {
-    noise.amp(0, 0.5); // release with fade out
+    if (!'ASDF'.includes(key.toUpperCase())) {
+      noise.amp(0, 0.5); // fade out
+    }
     delete activeKeys[key];
   }
 }
