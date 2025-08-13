@@ -1,27 +1,23 @@
-
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Seiryn (p5.js)</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.5.0/p5.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.5.0/addons/p5.sound.min.js"></script>
-    <script defer src="sketch.js"></script>
-    <style>
-      html, body { height: 100%; }
-      body {
-        margin: 0;
-        background: #fff;               /* white background */
-        display: flex;                  /* center the canvas */
-        align-items: center;
-        justify-content: center;
-        font-family: system-ui, Arial;
-      }
-      canvas { display: block; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
-    </style>
-  </head>
-  <body>
-    <div class="credit">Press A–Z to play. Click once to enable audio.</div>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Metallic Visuals</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden; /* prevent scrollbars */
+      background: black; /* default background */
+    }
+    canvas {
+      display: block; /* remove inline spacing */
+    }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <script src="sketch.js"></script>
+</body>
 </html>
