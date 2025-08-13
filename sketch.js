@@ -1,7 +1,6 @@
 let shapes = [];
 let keyMap = {};
-let notes = [261.63, 277.18, 329.63, 369.99, 415.30, 466.16, 493.88]; // Enigmatic scale, one octave
-let keysList = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+let scaleFreqs = [261.63, 277.18, 329.63, 369.99, 415.30, 466.16, 493.88]; // C, Db, E, F#, G#, A#, B
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -9,96 +8,93 @@ function setup() {
   textAlign(CENTER, CENTER);
   textSize(32);
 
-  // Map all 26 keys to the scale, cycling over 3 octaves
-  for (let i = 0; i < keysList.length; i++) {
-    let octave = floor(i / notes.length);
-    keyMap[keysList[i]] = notes[i % notes.length] * pow(2, -1 + octave); // one octave down
+  // Map all 26 keys to the scale over 2 octaves
+  let keys = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for (let i = 0; i < keys.length; i++) {
+    let octave = i < 7 ? 1 : i < 14 ? 2 : 3;
+    keyMap[keys[i]] = scaleFreqs[i % scaleFreqs.length] / Math.pow(2, 1 - octave);
   }
 }
 
 function draw() {
-  background(0, 50); // slight fade for trails
+  background(0);
 
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
 
-    // Move shape
+    // Move shapes
     s.x += s.vx;
     s.y += s.vy;
 
-    // Trail
-    s.trail.push({x: s.x, y: s.y, opacity: s.opacity});
-    if (s.trail.length > 20) s.trail.shift();
+    // Update amplitude
+    let level = s.amp.getLevel();
+    let ampScale = map(level, 0, 0.3, 0.5, 2);
 
+    // Shape trail
+    s.trail.push({x: s.x, y: s.y, opacity: 255});
+    if (s.trail.length > 30) s.trail.shift();
     for (let t of s.trail) {
       fill(255, t.opacity);
-      if (s.type === 'circle') ellipse(t.x, t.y, s.size*0.7);
-      else rect(t.x, t.y, s.size*0.7, s.size*0.7);
-      t.opacity -= 5;
+      ellipse(t.x, t.y, 20 * ampScale);
+      t.opacity -= 8;
     }
 
     // Glow pulse
     if (s.glow > 0) {
-      fill(255, 50, 50, s.glow);
-      if (s.type === 'circle') ellipse(s.x, s.y, s.size*1.2);
-      else rect(s.x - s.size*0.1, s.y - s.size*0.1, s.size*1.2, s.size*1.2);
-      s.glow -= 5;
+      fill(255, 50, 50, s.glow); // subtle red glow
+      ellipse(s.x, s.y, 30 * ampScale);
+      s.glow *= 0.95;
     }
 
-    // Main shape
-    fill(255, s.opacity);
-    if (s.type === 'circle') ellipse(s.x, s.y, s.size);
-    else rect(s.x, s.y, s.size, s.size);
-
-    // Fade
-    s.opacity -= 0.5;
+    // Shape fade out
+    s.opacity -= 1;
     if (s.opacity <= 0) {
       s.osc.amp(0, 0.5);
-      s.osc.stop();
+      s.osc.stop(0.5);
       shapes.splice(i, 1);
+      continue;
     }
+
+    // Draw main shape
+    fill(255, s.opacity);
+    ellipse(s.x, s.y, 30 * ampScale);
   }
 }
 
 function keyPressed() {
   userStartAudio();
-
   let k = key.toUpperCase();
   if (!keyMap[k]) return;
 
   let freq = keyMap[k];
-  let oscType = random(['triangle','sine']);
-  let osc = new p5.Oscillator(oscType);
+  let osc = new p5.Oscillator('triangle');
   osc.freq(freq);
   osc.start();
-  osc.amp(0.4, 0.05); // smooth fade-in
+  osc.amp(0.3, 0.1);
 
-  // Delay & Reverb
-  let delay = new p5.Delay();
-  delay.process(osc, 0.3, 0.4, 2000);
-  let reverb = new p5.Reverb();
-  reverb.process(osc, 2, 1); 
+  let amp = new p5.Amplitude();
+  amp.setInput(osc);
 
   let s = {
-    x: random(width), 
-    y: random(height), 
-    vx: random(-1,1), 
-    vy: random(-1,1),
-    size: random(30,60),
-    type: random(['circle','square']),
+    x: random(width),
+    y: random(height),
+    vx: random(-2, 2),
+    vy: random(-2, 2),
     osc: osc,
+    amp: amp,
+    opacity: 255,
     trail: [],
-    glow: 100,
-    opacity: 255
+    glow: 150
   };
+
   shapes.push(s);
 }
 
 function keyReleased() {
   if (shapes.length > 0) {
     let s = shapes[shapes.length - 1];
-    s.osc.amp(0, 0.8); // smooth fade-out
-    s.osc.stop(0.8);
+    s.osc.amp(0, 0.5);
+    s.osc.stop(0.5);
   }
 }
 
