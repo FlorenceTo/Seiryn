@@ -2,6 +2,7 @@ let shapes = [];
 let keyMap = {};
 let scaleNotes = [130.81, 138.59, 164.81, 185.00, 207.65, 233.08, 246.94, 261.63]; // One octave down
 let letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+let audioUnlocked = false;
 
 for (let i = 0; i < letters.length; i++) {
   keyMap[letters[i]] = {
@@ -14,36 +15,37 @@ for (let i = 0; i < letters.length; i++) {
 function setup() {
   createCanvas(windowWidth, windowHeight);
   noStroke();
+  textAlign(CENTER, CENTER);
+  fill(255);
+  textSize(24);
+  text('Press any key to start', width/2, height/2);
 }
 
 function draw() {
-  background(0, 30); // slight trail effect
+  background(0, 20);
+
+  if (!audioUnlocked) return; // wait for first key press
 
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
 
-    // Move
     s.x += s.vx;
     s.y += s.vy;
 
-    // Pitch modulation
     let freqOffset = sin(frameCount * 0.01 + s.offset) * 10;
     if (s.osc) s.osc.freq(s.baseFreq + freqOffset);
 
-    // Update amplitude
     let ampScale = s.osc ? map(s.amp.getLevel(), 0, 0.3, 0.5, 2) : 1;
 
-    // Trail
     s.trail.push({ x: s.x, y: s.y, opacity: 255 });
     if (s.trail.length > 20) s.trail.shift();
     for (let t of s.trail) {
       fill(s.color[0], s.color[1], s.color[2], t.opacity);
       if (s.type === 'circle') ellipse(t.x, t.y, 20 * ampScale);
       else rect(t.x - 10 * ampScale, t.y - 10 * ampScale, 20 * ampScale, 20 * ampScale);
-      t.opacity *= 0.85; // smooth fade
+      t.opacity *= 0.85;
     }
 
-    // Particles
     for (let j = s.particles.length - 1; j >= 0; j--) {
       let p = s.particles[j];
       p.x += p.vx * ampScale;
@@ -56,13 +58,11 @@ function draw() {
       }
     }
 
-    // Main shape
-    fill(s.color[0], s.color[1], s.color[2], s.opacity);
     let size = map(s.baseFreq + freqOffset, 130, 262, 30, 80) * ampScale;
+    fill(s.color[0], s.color[1], s.color[2], s.opacity);
     if (s.type === 'circle') ellipse(s.x, s.y, size);
     else rect(s.x - size/2, s.y - size/2, size, size);
 
-    // Smooth fade out
     s.opacity *= 0.97;
     if (s.opacity < 1) {
       if (s.osc) {
@@ -75,13 +75,16 @@ function draw() {
 }
 
 function keyPressed() {
-  userStartAudio(); // ensures browser audio unlock
+  if (!audioUnlocked) {
+    userStartAudio();
+    audioUnlocked = true;
+    return;
+  }
 
   let k = key.toUpperCase();
   if (!keyMap[k]) return;
 
   let config = keyMap[k];
-
   let osc = new p5.Oscillator(config.type === 'circle' ? 'triangle' : 'sine');
   osc.freq(config.baseFreq);
   osc.start();
