@@ -11,7 +11,7 @@ let scaleRatios = [
   Math.pow(2, 8/12), // G♯
   Math.pow(2, 10/12), // A♯
   Math.pow(2, 11/12), // B
-  2           // C (octave)
+  2           // C octave
 ];
 
 function setup() {
@@ -39,15 +39,17 @@ function draw() {
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
 
+    // Move shapes
     s.x += s.vx;
     s.y += s.vy;
 
     if (s.x < 0 || s.x > width) s.vx *= -1;
     if (s.y < 0 || s.y > height) s.vy *= -1;
 
-    // Pitch modulation over time
-    let freqOffset = sin(frameCount * 0.05 + s.offset) * 20; // subtle wobble
-    s.osc.freq(s.baseFreq + freqOffset);
+    // Dreamy pitch glide and vibrato
+    s.currentFreq += (s.targetFreq - s.currentFreq) * 0.01;
+    let vibrato = sin(frameCount * 0.05 + s.offset) * 5;
+    s.osc.freq(s.currentFreq + vibrato);
 
     // Trail
     s.trail.push({ x: s.x, y: s.y, opacity: s.opacity });
@@ -61,7 +63,7 @@ function draw() {
 
     // Main shape
     fill(s.color[0], s.color[1], s.color[2], s.opacity);
-    let size = map(s.baseFreq + freqOffset, 200, 800, 30, 100);
+    let size = map(s.currentFreq, 200, 800, 30, 100);
     if (s.type === 'circle') ellipse(s.x, s.y, size);
     else rect(s.x - size/2, s.y - size/2, size, size);
 
@@ -84,9 +86,11 @@ function keyPressed() {
   if (config.type === 'circle') osc = new p5.Oscillator('triangle'); // tap
   else osc = new p5.Oscillator('sine'); // bongo-like
 
-  osc.freq(config.freq);
   osc.start();
   osc.amp(0.5, 0.05);
+
+  // Randomly pick next target freq within scale for glide
+  let targetFreq = config.freq * random(0.8, 1.2);
 
   let s = {
     x: random(width),
@@ -95,6 +99,8 @@ function keyPressed() {
     vy: random(-3, 3),
     type: config.type,
     baseFreq: config.freq,
+    currentFreq: config.freq,
+    targetFreq: targetFreq,
     offset: random(TWO_PI),
     osc: osc,
     color: config.color,
