@@ -38,6 +38,7 @@ function draw() {
     
     // Smooth fade out
     s.opacity -= 0.8;
+    s.glow -= 2;
     if (s.opacity <= 0) {
       s.osc.amp(0, 1); 
       s.osc.stop(1);
@@ -50,10 +51,17 @@ function draw() {
     s.trail.push({x: s.x, y: s.y, opacity: s.opacity});
     if (s.trail.length > 20) s.trail.shift();
     for (let t of s.trail) {
-      let col = lerpColor(color(255,0,0,50), color(255,255,255,50), t.opacity/255);
+      let col = color(255, t.opacity); // white trail
       fill(col);
       if (s.type === 'circle') ellipse(t.x, t.y, s.size * 0.7);
       else rect(t.x, t.y, s.size * 0.7, s.size * 0.7);
+    }
+    
+    // Glow pulse (red highlight)
+    if (s.glow > 0) {
+      fill(255, 50, 50, s.glow); 
+      if (s.type === 'circle') ellipse(s.x, s.y, s.size * 1.2);
+      else rect(s.x - s.size*0.1, s.y - s.size*0.1, s.size*1.2, s.size*1.2);
     }
     
     // Main shape
@@ -98,8 +106,8 @@ function keyPressed() {
     vy: random(-1,1),
     size: random(30,80),
     type: type,
-    color: [255,255,255], // main color white
     opacity: 255,
+    glow: 100, // red glow starts strong
     osc: osc,
     freq: freq,
     trail: [],
