@@ -1,17 +1,17 @@
 let shapes = [];
 let keyMap = {};
 
-// Enigmatic scale: C, D♭, E, F♯, G♯, A♯, B, C
+// Enigmatic scale (C, D♭, E, F♯, G♯, A♯, B, C)
 let baseFreq = 261.63; // Middle C
 let scaleRatios = [
-  1,          // C
+  1,                 // C
   Math.pow(2, 1/12), // D♭
   Math.pow(2, 4/12), // E
   Math.pow(2, 6/12), // F♯
   Math.pow(2, 8/12), // G♯
-  Math.pow(2, 10/12), // A♯
-  Math.pow(2, 11/12), // B
-  2           // C octave
+  Math.pow(2, 10/12),// A♯
+  Math.pow(2, 11/12),// B
+  2                  // C octave
 ];
 
 function setup() {
@@ -42,12 +42,19 @@ function draw() {
     // Move shapes
     s.x += s.vx;
     s.y += s.vy;
-
     if (s.x < 0 || s.x > width) s.vx *= -1;
     if (s.y < 0 || s.y > height) s.vy *= -1;
 
-    // Dreamy pitch glide and vibrato
-    s.currentFreq += (s.targetFreq - s.currentFreq) * 0.01;
+    // Glide towards next scale note
+    let target = s.scaleNotes[s.currentNoteIndex];
+    s.currentFreq += (target - s.currentFreq) * 0.02;
+
+    // If close enough, pick next note
+    if (abs(s.currentFreq - target) < 0.5) {
+      s.currentNoteIndex = (s.currentNoteIndex + 1) % s.scaleNotes.length;
+    }
+
+    // Vibrato
     let vibrato = sin(frameCount * 0.05 + s.offset) * 5;
     s.osc.freq(s.currentFreq + vibrato);
 
@@ -89,8 +96,8 @@ function keyPressed() {
   osc.start();
   osc.amp(0.5, 0.05);
 
-  // Randomly pick next target freq within scale for glide
-  let targetFreq = config.freq * random(0.8, 1.2);
+  // Precompute scale notes for this shape
+  let scaleNotes = scaleRatios.map(r => config.freq * r);
 
   let s = {
     x: random(width),
@@ -98,9 +105,9 @@ function keyPressed() {
     vx: random(-3, 3),
     vy: random(-3, 3),
     type: config.type,
-    baseFreq: config.freq,
     currentFreq: config.freq,
-    targetFreq: targetFreq,
+    scaleNotes: scaleNotes,
+    currentNoteIndex: floor(random(scaleNotes.length)),
     offset: random(TWO_PI),
     osc: osc,
     color: config.color,
