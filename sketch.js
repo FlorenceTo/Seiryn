@@ -1,14 +1,17 @@
 let shapes = [];
 let camZoom = 0;
 
-// Enigmatic scale (C, Db, E, F#, G#, A#, B) over 3 octaves
-let enigmaticFreqs = [
-  277.18, 329.63, 370.00, 415.30, 466.16, 554.37, 622.25, // octave 3
-  739.99, 830.61, 932.33, 1108.73, 1244.51, 1479.98,      // octave 4
-  1661.22, 1864.66, 2217.46, 2489.02, 2959.96, 3322.44    // octave 5
-];
+// Enigmatic scale intervals in semitones: 0, 1, 4, 8, 11, 15, 18
+let scaleIntervals = [0, 1, 4, 8, 11, 15, 18];
+let baseNote = 261.63; // C4
 
 let keysList = "ertyuisdfghjklxcvbnm".split("");
+
+function getFreqRandomOctave(interval) {
+  // Pick octave -2, -1, 0 relative to C4
+  let octaveShift = random([-2, -1, 0]);
+  return baseNote * pow(2, octaveShift) * pow(2, interval/12);
+}
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -21,19 +24,15 @@ function draw() {
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
 
-    // Movement
     s.x += s.vx;
     s.y += s.vy;
 
-    // Pitch modulation
     let freqOffset = sin(frameCount * 0.02 + s.offset) * 5;
     s.osc.freq(s.baseFreq + freqOffset);
 
-    // Envelope smoothing
     let level = s.amp.getLevel();
     let ampScale = map(level, 0, 0.3, 0.5, 2);
 
-    // Glow pulse
     let glow = sin(frameCount * 0.1 + s.offset) * 100 + 155;
     let redGlow = map(level, 0, 0.3, 0, 255);
     drawingContext.shadowBlur = 20;
@@ -42,14 +41,12 @@ function draw() {
     fill(255, 255, 255, glow);
     ellipse(s.x, s.y, s.size * ampScale);
 
-    // Border
     stroke(255, 0, 0, 150);
     strokeWeight(1);
     noFill();
     ellipse(s.x, s.y, s.size * ampScale + 2);
     noStroke();
 
-    // Fade out
     s.opacity -= 1;
     if (s.opacity <= 0) {
       s.env.triggerRelease();
@@ -65,34 +62,29 @@ function keyPressed() {
   let idx = keysList.indexOf(key.toLowerCase());
   if (idx === -1) return;
 
-  let freq = enigmaticFreqs[idx % enigmaticFreqs.length];
+  let interval = scaleIntervals[idx % scaleIntervals.length];
+  let freq = getFreqRandomOctave(interval);
 
   let osc = new p5.Oscillator('triangle');
-  osc.freq(freq);
+  osc.freq(freq * random(0.98, 1.02)); // slight detune
   osc.start();
 
-  // Slight detune for warmth
-  osc.freq(freq * 0.999 + random(-1, 1));
-
-  // Filter envelope
   let filter = new p5.LowPass();
-  filter.freq(2000);
+  filter.freq(1500);
   filter.res(2);
   osc.disconnect();
   osc.connect(filter);
 
-  // Envelope for smooth fade
   let env = new p5.Envelope();
-  env.setADSR(0.05, 0.2, 0.3, 1.5);
-  env.setRange(0.5, 0);
+  env.setADSR(0.05, 0.1, 0.3, 0.7);
+  env.setRange(0.4, 0);
   env.play(osc);
 
-  // Reverb & delay
   let reverb = new p5.Reverb();
-  reverb.process(osc, 5, 5);
+  reverb.process(osc, 2, 2); // shorter reverb
 
   let delay = new p5.Delay();
-  delay.process(osc, 0.2, 0.4, 2300);
+  delay.process(osc, 0.15, 0.3, 1200); // shorter delay
 
   let amp = new p5.Amplitude();
   amp.setInput(osc);
