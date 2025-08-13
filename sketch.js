@@ -1,13 +1,13 @@
 let shapes = [];
 let keyMap = {};
-let scaleNotes = [130.81, 138.59, 164.81, 185.00, 207.65, 233.08, 246.94, 261.63]; // One octave down
+let scaleNotes = [130.81, 138.59, 164.81, 185.00, 207.65, 233.08, 246.94, 261.63];
 let letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 let audioUnlocked = false;
 
 for (let i = 0; i < letters.length; i++) {
   keyMap[letters[i]] = {
     type: i % 2 === 0 ? 'circle' : 'square',
-    color: [random([255, 0, 128]), random([255, 0, 128]), random([255, 0, 128])],
+    color: [random([0,128,255]), random([0,128,255]), random([0,128,255])],
     baseFreq: scaleNotes[i % scaleNotes.length]
   };
 }
@@ -18,13 +18,15 @@ function setup() {
   textAlign(CENTER, CENTER);
   fill(255);
   textSize(24);
-  text('Press any key to start', width/2, height/2);
 }
 
 function draw() {
   background(0, 20);
 
-  if (!audioUnlocked) return; // wait for first key press
+  if (!audioUnlocked) {
+    text('Click anywhere to start', width/2, height/2);
+    return;
+  }
 
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
@@ -74,12 +76,15 @@ function draw() {
   }
 }
 
-function keyPressed() {
+function mousePressed() {
   if (!audioUnlocked) {
     userStartAudio();
     audioUnlocked = true;
-    return;
   }
+}
+
+function keyPressed() {
+  if (!audioUnlocked) return;
 
   let k = key.toUpperCase();
   if (!keyMap[k]) return;
