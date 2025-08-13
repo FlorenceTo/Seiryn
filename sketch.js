@@ -1,9 +1,8 @@
 let shapes = [];
 let keyMap = {};
-let scaleNotes = [130.81, 138.59, 164.81, 185.00, 207.65, 233.08, 246.94, 261.63]; // C, Db, E, F#, G#, A#, B, C
+let scaleNotes = [130.81, 138.59, 164.81, 185.00, 207.65, 233.08, 246.94, 261.63]; // One octave down
 let letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-// Assign each key a shape, frequency from scale, and color
 for (let i = 0; i < letters.length; i++) {
   keyMap[letters[i]] = {
     type: i % 2 === 0 ? 'circle' : 'square',
@@ -29,11 +28,10 @@ function draw() {
 
     // Pitch modulation
     let freqOffset = sin(frameCount * 0.01 + s.offset) * 10;
-    s.osc.freq(s.baseFreq + freqOffset);
+    if (s.osc) s.osc.freq(s.baseFreq + freqOffset);
 
     // Update amplitude
-    let level = s.amp.getLevel();
-    let ampScale = map(level, 0, 0.3, 0.5, 2);
+    let ampScale = s.osc ? map(s.amp.getLevel(), 0, 0.3, 0.5, 2) : 1;
 
     // Trail
     s.trail.push({ x: s.x, y: s.y, opacity: 255 });
@@ -67,15 +65,18 @@ function draw() {
     // Smooth fade out
     s.opacity *= 0.97;
     if (s.opacity < 1) {
-      s.osc.amp(0, 1.0, 'expo');
-      s.osc.stop(1.0);
+      if (s.osc) {
+        s.osc.amp(0, 1.0, 'expo');
+        s.osc.stop(1.0);
+      }
       shapes.splice(i, 1);
     }
   }
 }
 
 function keyPressed() {
-  userStartAudio();
+  userStartAudio(); // ensures browser audio unlock
+
   let k = key.toUpperCase();
   if (!keyMap[k]) return;
 
@@ -87,10 +88,10 @@ function keyPressed() {
   osc.amp(0.5, 0.1);
 
   let delay = new p5.Delay();
-  delay.process(osc, 0.3, 0.5, 2000);
+  delay.process(osc, 0.4, 0.6, 2000);
 
   let reverb = new p5.Reverb();
-  reverb.process(osc, 3, 2);
+  reverb.process(osc, 4, 2.5);
 
   let amp = new p5.Amplitude();
   amp.setInput(osc);
