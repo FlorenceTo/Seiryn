@@ -1,5 +1,5 @@
 let shapes = [];
-let maxShapes = 12; // limit active shapes
+let maxShapes = 12; 
 let keyMap = {}; 
 let reverb;
 
@@ -18,27 +18,26 @@ function setup() {
   let scale = [261.63, 277.18, 329.63, 369.99, 415.30, 466.16, 493.88]; // C, D♭, E, F♯, G♯, A♯, B
   let keys = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   for (let i = 0; i < keys.length; i++) {
-    let octaveShift = i < 9 ? 0.5 : i < 18 ? 1 : 2; // spread over 3 octaves
+    let octaveShift = i < 9 ? 0.5 : i < 18 ? 1 : 2; 
     keyMap[keys[i]] = scale[i % scale.length] * octaveShift;
   }
 }
 
 function draw() {
-  background(0, 50); // semi-transparent for trails
+  background(0, 30); // semi-transparent for trails
   
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
     
-    // Smooth movement
     s.x += s.vx * 0.5;
     s.y += s.vy * 0.5;
     
-    // Pitch modulation (dreamy vibrato)
+    // Pitch modulation
     let mod = sin(frameCount * 0.02 + s.offset) * 10; 
     s.osc.freq(s.freq + mod);
     
-    // Fade out smoothly
-    s.opacity -= 1;
+    // Smooth fade out
+    s.opacity -= 0.8;
     if (s.opacity <= 0) {
       s.osc.amp(0, 1); 
       s.osc.stop(1);
@@ -47,17 +46,18 @@ function draw() {
       continue;
     }
     
-    // Draw trails
+    // Trail
     s.trail.push({x: s.x, y: s.y, opacity: s.opacity});
     if (s.trail.length > 20) s.trail.shift();
     for (let t of s.trail) {
-      fill(s.color[0], s.color[1], s.color[2], t.opacity * 0.3);
+      let col = lerpColor(color(255,0,0,50), color(255,255,255,50), t.opacity/255);
+      fill(col);
       if (s.type === 'circle') ellipse(t.x, t.y, s.size * 0.7);
       else rect(t.x, t.y, s.size * 0.7, s.size * 0.7);
     }
     
-    // Draw main shape
-    fill(s.color[0], s.color[1], s.color[2], s.opacity);
+    // Main shape
+    fill(255, s.opacity);
     if (s.type === 'circle') ellipse(s.x, s.y, s.size);
     else rect(s.x, s.y, s.size, s.size);
   }
@@ -98,7 +98,7 @@ function keyPressed() {
     vy: random(-1,1),
     size: random(30,80),
     type: type,
-    color: [random([0,255]), random([0,255]), random([0,255])],
+    color: [255,255,255], // main color white
     opacity: 255,
     osc: osc,
     freq: freq,
