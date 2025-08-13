@@ -1,6 +1,4 @@
 let shapes = [];
-let keysList = 'ertyuisdfghjklxcvbnm'.split('');
-let scaleIntervals = [0, 1, 4, 7, 10, 13, 16]; // Enigmatic scale, one octave
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -8,86 +6,79 @@ function setup() {
 }
 
 function draw() {
-  background(0, 50); // slight trail effect
-  for (let i = shapes.length - 1; i >= 0; i--) {
-    let s = shapes[i];
-
-    // Move
+  background(0);
+  
+  // Update shapes
+  for (let s of shapes) {
     s.x += s.vx;
     s.y += s.vy;
-
-    // Bounce edges
+    
+    // Collision with canvas edges
     if (s.x < 0 || s.x > width) s.vx *= -1;
     if (s.y < 0 || s.y > height) s.vy *= -1;
-
-    // Shape fade
-    s.opacity -= 1;
-    if (s.opacity <= 0) {
-      s.osc.stop();
-      shapes.splice(i, 1);
-      continue;
-    }
-
-    // Draw glow
+    
+    // Draw shape with glow
     push();
     translate(s.x, s.y);
-    let glow = map(s.opacity, 255, 0, 50, 0);
-    fill(255, glow, glow, s.opacity);
-    stroke(255, glow, glow);
-    strokeWeight(1);
-    if (s.type === 'sphere') ellipse(0, 0, s.size);
+    fill(255);
+    if (s.glow > 0) {
+      stroke(255, 0, 0, s.glow);
+      strokeWeight(2);
+      s.glow -= 5;
+    } else {
+      noStroke();
+    }
+    if (s.type === 'circle') ellipse(0, 0, s.size);
     else rectMode(CENTER), rect(0, 0, s.size, s.size);
     pop();
   }
+  
+  // Collision detection
+  for (let i = 0; i < shapes.length; i++) {
+    for (let j = i + 1; j < shapes.length; j++) {
+      if (checkCollision(shapes[i], shapes[j])) {
+        shiftDown(shapes[i]);
+        shiftDown(shapes[j]);
+      }
+    }
+  }
 }
 
-function getFreq(idx) {
-  let baseFreq = 130.81; // C3
-  let interval = scaleIntervals[idx % scaleIntervals.length];
-  return baseFreq * pow(2, interval / 12) * random(0.98, 1.02);
+// Simple collision for circle & square approximation
+function checkCollision(a, b) {
+  let dx = a.x - b.x;
+  let dy = a.y - b.y;
+  let distance = sqrt(dx*dx + dy*dy);
+  return distance < (a.size + b.size)/2;
 }
 
+// Shift frequency 2 octaves down
+function shiftDown(shape) {
+  if (!shape.collided) {
+    shape.osc.freq(shape.osc.freq().value / 4, 0.5); // smooth transition
+    shape.glow = 100;
+    shape.collided = true;
+    setTimeout(() => shape.collided = false, 500); // cooldown
+  }
+}
+
+// Key pressed to spawn shapes
 function keyPressed() {
   userStartAudio();
-  let idx = keysList.indexOf(key.toLowerCase());
-  if (idx === -1) return;
-
-  let freq = getFreq(idx);
-  let type = idx % 2 === 0 ? 'sphere' : 'box';
-
-  let osc = new p5.Oscillator(type === 'sphere' ? 'triangle' : 'sine');
+  let type = random(['circle','square']);
+  let osc = new p5.Oscillator('triangle');
+  let freq = random([261.63, 277.18, 329.63, 369.99, 415.30, 466.16, 493.88]); // Enigmatic scale
   osc.freq(freq);
+  osc.amp(0.3, 0.05);
   osc.start();
-
-  let filter = new p5.LowPass();
-  filter.freq(1000);
-  filter.res(1.2);
-  osc.disconnect();
-  osc.connect(filter);
-
-  let env = new p5.Envelope();
-  env.setADSR(0.05, 0.1, 0.3, 0.5);
-  env.setRange(0.3, 0);
-  env.play(osc);
-
-  let reverb = new p5.Reverb();
-  reverb.process(osc, 1, 1.5);
-
-  let delay = new p5.Delay();
-  delay.process(osc, 0.05, 0.25, 500);
-
+  
   shapes.push({
-    x: random(width),
-    y: random(height),
-    vx: random(-1, 1),
-    vy: random(-1, 1),
-    size: random(40, 100),
+    x: random(width), y: random(height),
+    vx: random(-2,2), vy: random(-2,2),
+    size: random(30,60),
     type: type,
     osc: osc,
-    opacity: 255
+    glow: 0,
+    collided: false
   });
-}
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
 }
