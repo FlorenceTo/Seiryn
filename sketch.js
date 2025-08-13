@@ -1,17 +1,13 @@
 let shapes = [];
 let keyMap = {};
 let scaleNotes = [130.81, 138.59, 164.81, 185.00, 207.65, 233.08, 246.94, 261.63]; // C, Db, E, F#, G#, A#, B, C
-
-// Assign each key a shape, base freq from scaleNotes, and color
 let letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+// Assign each key a shape, frequency from scale, and color
 for (let i = 0; i < letters.length; i++) {
   keyMap[letters[i]] = {
     type: i % 2 === 0 ? 'circle' : 'square',
-    color: [
-      random([255, 0, 128]),
-      random([255, 0, 128]),
-      random([255, 0, 128])
-    ],
+    color: [random([255, 0, 128]), random([255, 0, 128]), random([255, 0, 128])],
     baseFreq: scaleNotes[i % scaleNotes.length]
   };
 }
@@ -19,8 +15,6 @@ for (let i = 0; i < letters.length; i++) {
 function setup() {
   createCanvas(windowWidth, windowHeight);
   noStroke();
-  textAlign(CENTER, CENTER);
-  textSize(32);
 }
 
 function draw() {
@@ -29,7 +23,7 @@ function draw() {
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
 
-    // Move shape
+    // Move
     s.x += s.vx;
     s.y += s.vy;
 
@@ -41,7 +35,7 @@ function draw() {
     let level = s.amp.getLevel();
     let ampScale = map(level, 0, 0.3, 0.5, 2);
 
-    // Draw trail
+    // Trail
     s.trail.push({ x: s.x, y: s.y, opacity: 255 });
     if (s.trail.length > 20) s.trail.shift();
     for (let t of s.trail) {
@@ -51,7 +45,7 @@ function draw() {
       t.opacity *= 0.85; // smooth fade
     }
 
-    // Particle effects
+    // Particles
     for (let j = s.particles.length - 1; j >= 0; j--) {
       let p = s.particles[j];
       p.x += p.vx * ampScale;
@@ -64,7 +58,7 @@ function draw() {
       }
     }
 
-    // Draw main shape
+    // Main shape
     fill(s.color[0], s.color[1], s.color[2], s.opacity);
     let size = map(s.baseFreq + freqOffset, 130, 262, 30, 80) * ampScale;
     if (s.type === 'circle') ellipse(s.x, s.y, size);
@@ -87,19 +81,16 @@ function keyPressed() {
 
   let config = keyMap[k];
 
-  let osc;
-  if (config.type === 'circle') osc = new p5.Oscillator('triangle');
-  else osc = new p5.Oscillator('sine');
-
+  let osc = new p5.Oscillator(config.type === 'circle' ? 'triangle' : 'sine');
   osc.freq(config.baseFreq);
   osc.start();
   osc.amp(0.5, 0.1);
 
   let delay = new p5.Delay();
-  delay.process(osc, 0.3, 0.5, 2000); // dreamy delay
+  delay.process(osc, 0.3, 0.5, 2000);
 
   let reverb = new p5.Reverb();
-  reverb.process(osc, 3, 2); // long reverb
+  reverb.process(osc, 3, 2);
 
   let amp = new p5.Amplitude();
   amp.setInput(osc);
@@ -120,7 +111,6 @@ function keyPressed() {
     offset: random(TWO_PI)
   };
 
-  // Spawn particles
   for (let i = 0; i < 10; i++) {
     s.particles.push({
       x: s.x, y: s.y,
@@ -132,14 +122,6 @@ function keyPressed() {
   }
 
   shapes.push(s);
-}
-
-function keyReleased() {
-  if (shapes.length > 0) {
-    let s = shapes[shapes.length - 1];
-    s.osc.amp(0, 1.0, 'expo');
-    s.osc.stop(1.0);
-  }
 }
 
 function windowResized() {
