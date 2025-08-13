@@ -1,44 +1,33 @@
 let started = false;
 let shapes = [];
 let texts = [];
-let metallicOsc;
+let noise; // p5.Noise for granular sound
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   noStroke();
   textAlign(CENTER, CENTER);
   textSize(32);
-  fill(255);
-  
-  // Create initial shapes
-  for (let i = 0; i < 20; i++) {
-    shapes.push({
-      x: random(width),
-      y: random(height),
-      size: random(50, 150),
-      color: [random(100, 255), random(100, 255), random(100, 255)],
-      offset: random(TWO_PI)
-    });
-  }
 
-  // Create fading text
   texts.push({text: "Click or Tap Anywhere", alpha: 255});
 
-  // Oscillator for metallic sound
-  metallicOsc = new p5.Oscillator('triangle');
-  metallicOsc.start();
-  metallicOsc.amp(0);
+  // Create white noise
+  noise = new p5.Noise('white');
+  noise.start();
+  noise.amp(0); // start silent
 }
 
 function draw() {
-  background(0, 30); // slight trail effect
+  background(0, 50); // slight trail
 
-  // Draw shapes
-  for (let s of shapes) {
-    fill(s.color[0], s.color[1], s.color[2], 200);
-    let offsetX = sin(frameCount * 0.01 + s.offset) * 50;
-    let offsetY = cos(frameCount * 0.01 + s.offset) * 50;
-    ellipse(s.x + offsetX, s.y + offsetY, s.size);
+  // Draw fading shapes
+  for (let i = shapes.length - 1; i >= 0; i--) {
+    let s = shapes[i];
+    fill(s.color[0], s.color[1], s.color[2], s.alpha);
+    ellipse(s.x, s.y, s.size);
+
+    s.alpha -= s.fadeRate;
+    if (s.alpha <= 0) shapes.splice(i, 1);
   }
 
   // Draw fading text
@@ -55,21 +44,35 @@ function mousePressed() {
     started = true;
   }
 
-  // Play metallic sound
-  let freq = random(300, 800);
+  // Play granular white noise burst
   let pan = map(mouseX, 0, width, -1, 1); // spatial panning
-  metallicOsc.freq(freq);
-  metallicOsc.pan(pan);
-  metallicOsc.amp(0.5, 0.05); // quick attack
-  metallicOsc.amp(0, 0.3);     // quick release
+  noise.pan(pan);
 
-  // Create new shape at click/tap
+  // Envelope for short granular burst
+  let attack = 0.01;
+  let sustain = random(0.05, 0.15);
+  let release = 0.1;
+
+  noise.amp(0.5, attack);        // ramp up quickly
+  setTimeout(() => {
+    noise.amp(0, release);       // ramp down after sustain
+  }, sustain * 1000);
+
+  // Add new shape
+  let colors = [
+    [255, 0, 0],
+    [0, 255, 0],
+    [0, 0, 255],
+    [255, 255, 0]
+  ];
+
   shapes.push({
     x: mouseX,
     y: mouseY,
-    size: random(50, 150),
-    color: [random(150, 255), random(150, 255), random(150, 255)],
-    offset: random(TWO_PI)
+    size: random(20, 50),
+    color: random(colors),
+    alpha: 255,
+    fadeRate: random(1, 3)
   });
 }
 
