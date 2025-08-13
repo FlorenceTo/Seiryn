@@ -2,21 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Interactive Shapes</title>
+  <title>Test p5</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/addons/p5.sound.min.js"></script>
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: black;
-    }
-    canvas {
-      display: block;
-    }
+    body { margin: 0; overflow: hidden; background: black; }
+    canvas { display: block; }
   </style>
 </head>
 <body>
-  <script src="sketch.js"></script>
+  <script>
+    function setup() {
+      createCanvas(windowWidth, windowHeight, WEBGL);
+    }
+    function draw() {
+      background(0);
+      push();
+      fill(255, 0, 0);
+      sphere(100);
+      pop();
+    }
+  </script>
 </body>
 </html>
