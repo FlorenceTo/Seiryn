@@ -1,4 +1,3 @@
-
 let shapes = [];
 let camAngleX = 0;
 let camAngleY = 0;
@@ -16,8 +15,6 @@ let keyMap = {
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
   noStroke();
-  textAlign(CENTER, CENTER);
-  textSize(32);
 }
 
 function draw() {
@@ -33,52 +30,25 @@ function draw() {
     0, 1, 0
   );
 
-  rotateY(frameCount * 0.002);
-
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
     s.x += s.vx; s.y += s.vy; s.z += s.vz;
 
-    let freqOffset = sin(frameCount * 0.01 + s.offset) * 100;
-    s.osc.freq(s.baseFreq + freqOffset);
-    s.panner.setPosition(s.x/2, s.y/2, s.z/2);
-
-    let level = s.amp.getLevel();
-    let ampScale = map(level, 0, 0.3, 0.5, 3);
-
-    s.trail.push({x:s.x, y:s.y, z:s.z, opacity:255});
-    if(s.trail.length>20) s.trail.shift();
-    for(let t of s.trail){
-      push();
-      translate(t.x, t.y, t.z);
-      fill(s.color[0], s.color[1], s.color[2], t.opacity);
-      sphere(10 * ampScale);
-      pop();
-      t.opacity -= 12;
-    }
-
-    s.opacity -= 1;
-    if(s.opacity<=0){
-      s.osc.amp(0,0.2);
-      s.osc.stop(0.2);
-      shapes.splice(i,1);
-      continue;
-    }
-
     push();
     translate(s.x, s.y, s.z);
     fill(s.color[0], s.color[1], s.color[2], s.opacity);
-    let size = map(s.baseFreq + freqOffset, 200, 900, 50, 150);
-    if(s.type==='sphere') sphere(size * ampScale);
-    else box(size * ampScale);
+    let size = map(s.baseFreq, 200, 900, 50, 150);
+    if (s.type==='sphere') sphere(size);
+    else box(size);
     pop();
-  }
 
-  push();
-  resetMatrix();
-  fill(255);
-  text("Press A,S,D,F,G,H to generate shapes with sound", 0, -height/2 + 50);
-  pop();
+    s.opacity -= 1;
+    if(s.opacity <= 0){
+      s.osc.amp(0,0.2);
+      s.osc.stop(0.2);
+      shapes.splice(i,1);
+    }
+  }
 }
 
 function keyPressed() {
@@ -92,32 +62,23 @@ function keyPressed() {
   osc.start();
   osc.amp(0.5, 0.05);
 
-  let delay = new p5.Delay();
-  delay.process(osc, 0.2, 0.4, 2000);
-
   let panner = new p5.Panner3D();
   osc.disconnect();
   osc.connect(panner);
 
-  let amp = new p5.Amplitude();
-  amp.setInput(osc);
-
   let s = {
     x: random(-width/2, width/2),
     y: random(-height/2, height/2),
-    z: random(-500, 500),
+    z: random(-500,500),
     vx: random(-1,1),
     vy: random(-1,1),
     vz: random(-1,1),
     type: config.type,
     baseFreq: config.freq,
-    offset: random(TWO_PI),
     osc: osc,
     panner: panner,
     color: config.color,
-    opacity: 255,
-    trail: [],
-    amp: amp
+    opacity: 255
   };
   shapes.push(s);
 }
@@ -136,4 +97,5 @@ function windowResized(){
 
 function mouseWheel(event){
   camZoom += event.delta*0.5;
-  camZoom = constr
+  camZoom = constrain(camZoom,-500,1000);
+}
