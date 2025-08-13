@@ -6,14 +6,15 @@ let noise, filterLFO;
 let bongoEnv, bongoOsc, bongoDelay;
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
+  let cnv = createCanvas(windowWidth, windowHeight);
+  cnv.parent(document.body);
   noStroke();
   textAlign(CENTER, CENTER);
   textSize(32);
 
   texts.push({ text: "Press Keys", alpha: 255 });
 
-  // Granular metallic noise (plain now)
+  // Plain metallic granular noise
   noise = new p5.Noise('white');
   noise.start();
   noise.amp(0); // start silent
@@ -38,16 +39,25 @@ function setup() {
 }
 
 function draw() {
-  background(0, 50); // trail
+  background(0, 50); // trails
 
+  // Draw shapes
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
     fill(s.color[0], s.color[1], s.color[2], s.alpha);
-    ellipse(s.x, s.y, s.size);
+    push();
+    translate(s.x, s.y);
+    rotate(s.angle);
+    ellipse(0, 0, s.sizeX, s.sizeY);
+    pop();
+
     s.alpha -= s.fadeRate;
+    s.angle += s.rotationSpeed;
+
     if (s.alpha <= 0) shapes.splice(i, 1);
   }
 
+  // Draw text
   for (let t of texts) {
     fill(255, t.alpha);
     text(t.text, width / 2, 100);
@@ -55,9 +65,9 @@ function draw() {
   }
 }
 
-// Key pressed
 function keyPressed() {
-  userStartAudio();
+  userStartAudio(); // activate audio
+
   if (!activeKeys[key]) {
     activeKeys[key] = true;
 
@@ -66,33 +76,36 @@ function keyPressed() {
       bongoOsc.freq(random(300, 600));
       bongoEnv.play(bongoOsc);
     } else {
-      // Plain metallic granular noise
+      // Plain metallic noise
       let pan = map(mouseX, 0, width, -1, 1);
       noise.pan(pan);
       filterLFO.freq(random(300, 1500));
       filterLFO.res(random(0.5, 5));
-      noise.amp(1.0, 0.05); // louder
+      noise.amp(1.0, 0.05);
     }
 
-    // Visual feedback
+    // Visual abstract shapes
     let colors = [
       [255, 0, 0],
       [0, 255, 0],
       [0, 0, 255],
       [255, 255, 0]
     ];
+
     shapes.push({
       x: random(width),
       y: random(height),
-      size: random(20, 50),
+      sizeX: random(20, 50),
+      sizeY: random(10, 40),
       color: random(colors),
       alpha: 255,
-      fadeRate: random(1, 3)
+      fadeRate: random(1, 3),
+      angle: random(TWO_PI),
+      rotationSpeed: random(-0.05, 0.05)
     });
   }
 }
 
-// Key released
 function keyReleased() {
   if (activeKeys[key]) {
     if (!'ASDF'.includes(key.toUpperCase())) {
@@ -104,4 +117,8 @@ function keyReleased() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+}
+
+function mousePressed() {
+  userStartAudio(); // required for browsers
 }
