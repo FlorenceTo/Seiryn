@@ -1,124 +1,102 @@
+let sounds = {};
 let shapes = [];
-let texts = [];
 let activeKeys = {};
 
-let noise, filterLFO;
-let bongoEnv, bongoOsc, bongoDelay;
-
 function setup() {
-  let cnv = createCanvas(windowWidth, windowHeight);
-  cnv.parent(document.body);
-  noStroke();
+  createCanvas(windowWidth, windowHeight, WEBGL);
   textAlign(CENTER, CENTER);
-  textSize(32);
+  background(0);
 
-  texts.push({ text: "Press Keys", alpha: 255 });
-
-  // Plain metallic granular noise
-  noise = new p5.Noise('white');
-  noise.start();
-  noise.amp(0); // start silent
-
-  filterLFO = new p5.Filter('lowpass');
-  noise.disconnect();
-  noise.connect(filterLFO);
-
-  // Bongo percussive sound
-  bongoOsc = new p5.Oscillator('triangle');
-  bongoOsc.start();
-  bongoOsc.amp(0);
-  bongoEnv = new p5.Envelope();
-  bongoEnv.setADSR(0.001, 0.2, 0, 0.2);
-  bongoEnv.setRange(0.5, 0);
-
-  // Short delay for bongo
-  bongoDelay = new p5.Delay();
-  bongoOsc.disconnect();
-  bongoOsc.connect(bongoDelay);
-  bongoDelay.process(bongoOsc, 0.15, 0.3, 2300);
+  // Prepare sounds for two shapes
+  sounds['A'] = createOscSound('triangle'); // Circle
+  sounds['S'] = createOscSound('square');   // Square
 }
 
 function draw() {
-  background(0, 50); // trails
+  background(0);
 
-  // Draw shapes
+  // Draw all shapes
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
-    fill(s.color[0], s.color[1], s.color[2], s.alpha);
+
     push();
-    translate(s.x, s.y);
-    rotate(s.angle);
-    ellipse(0, 0, s.sizeX, s.sizeY);
+    translate(s.x, s.y, s.z);
+    rotateX(s.rotX);
+    rotateY(s.rotY);
+    rotateZ(s.rotZ);
+    fill(s.color[0], s.color[1], s.color[2], s.alpha);
+
+    if (s.type === 'circle') {
+      sphere(s.size);
+    } else if (s.type === 'square') {
+      box(s.size);
+    }
     pop();
 
-    s.alpha -= s.fadeRate;
-    s.angle += s.rotationSpeed;
+    // Rotate shapes
+    s.rotX += s.speedX;
+    s.rotY += s.speedY;
+    s.rotZ += s.speedZ;
 
-    if (s.alpha <= 0) shapes.splice(i, 1);
-  }
-
-  // Draw text
-  for (let t of texts) {
-    fill(255, t.alpha);
-    text(t.text, width / 2, 100);
-    if (t.alpha > 0) t.alpha -= 2;
+    // Fade out
+    s.alpha -= 2;
+    if (s.alpha <= 0) {
+      shapes.splice(i, 1);
+    }
   }
 }
 
 function keyPressed() {
-  userStartAudio(); // activate audio
+  userStartAudio(); // ensure audio context is active
 
   if (!activeKeys[key]) {
     activeKeys[key] = true;
 
-    if ('ASDF'.includes(key.toUpperCase())) {
-      // Bongo mid-frequency
-      bongoOsc.freq(random(300, 600));
-      bongoEnv.play(bongoOsc);
-    } else {
-      // Plain metallic noise
-      let pan = map(mouseX, 0, width, -1, 1);
-      noise.pan(pan);
-      filterLFO.freq(random(300, 1500));
-      filterLFO.res(random(0.5, 5));
-      noise.amp(1.0, 0.05);
+    if (sounds[key]) {
+      let s = sounds[key];
+      let freq = random(100, 800); // Random pitch
+      s.osc.freq(freq);
+      s.env.play(s.osc);
+
+      // Map pitch to size (low = bigger)
+      let size = map(freq, 100, 800, 200, 50);
+
+      // Create new shape
+      shapes.push({
+        x: random(-width / 2, width / 2),
+        y: random(-height / 2, height / 2),
+        z: random(-300, 300), // keep objects closer
+        type: key === 'A' ? 'circle' : 'square',
+        size: size,
+        color: [random(150, 255), random(150, 255), random(150, 255)],
+        rotX: random(TWO_PI),
+        rotY: random(TWO_PI),
+        rotZ: random(TWO_PI),
+        speedX: random(-0.01, 0.01),
+        speedY: random(-0.01, 0.01),
+        speedZ: random(-0.01, 0.01),
+        alpha: 255
+      });
     }
-
-    // Visual abstract shapes
-    let colors = [
-      [255, 0, 0],
-      [0, 255, 0],
-      [0, 0, 255],
-      [255, 255, 0]
-    ];
-
-    shapes.push({
-      x: random(width),
-      y: random(height),
-      sizeX: random(20, 50),
-      sizeY: random(10, 40),
-      color: random(colors),
-      alpha: 255,
-      fadeRate: random(1, 3),
-      angle: random(TWO_PI),
-      rotationSpeed: random(-0.05, 0.05)
-    });
   }
 }
 
 function keyReleased() {
   if (activeKeys[key]) {
-    if (!'ASDF'.includes(key.toUpperCase())) {
-      noise.amp(0, 0.5); // fade out
-    }
     delete activeKeys[key];
   }
 }
 
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
+function createOscSound(type) {
+  let osc = new p5.Oscillator(type);
+  osc.start();
+  osc.amp(0);
+  let env = new p5.Envelope();
+  env.setADSR(0.001, 0.1, 0, 0.2);
+  env.setRange(0.5, 0);
+  return { osc, env };
 }
 
-function mousePressed() {
-  userStartAudio(); // required for browsers
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }
