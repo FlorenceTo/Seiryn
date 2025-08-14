@@ -28,25 +28,32 @@ function setup() {
 }
 
 function draw() {
-  background(0, 50);
+  // Very quick trail fade
+  background(0, 30);
 
-  for (let s of shapes) {
+  for (let i = shapes.length-1; i >= 0; i--) {
+    let s = shapes[i];
     s.x += s.vx;
     s.y += s.vy;
     if (s.x < 0 || s.x > width) s.vx *= -1;
     if (s.y < 0 || s.y > height) s.vy *= -1;
 
+    let lifeProgress = (millis() - s.startTime) / s.lifespan;
+    if (lifeProgress >= 1) {
+      s.osc.amp(0, 0.1);
+      s.osc.stop(0.1);
+      shapes.splice(i,1);
+      continue;
+    }
+
+    let glow = sin(frameCount * 0.2) * 50 + 50;
     push();
     translate(s.x, s.y);
-
-    let glow = sin(frameCount * 0.1) * 50 + 50;
-
     stroke(255, 0, 0, glow);
     strokeWeight(1);
-    fill(255);
-    if(s.type==='sphere') ellipse(0,0,s.size);
-    else rectMode(CENTER), rect(0,0,s.size,s.size);
-
+    fill(255, 255 * (1-lifeProgress));
+    if(s.type==='sphere') ellipse(0,0,s.size*(1-lifeProgress));
+    else rectMode(CENTER), rect(0,0,s.size*(1-lifeProgress),s.size*(1-lifeProgress));
     pop();
   }
 }
@@ -66,15 +73,15 @@ function keyPressed() {
     size: 50,
     freq: config.freq,
     osc: new p5.Oscillator('triangle'),
-    startTime: millis()
+    startTime: millis(),
+    lifespan: 600 // shorter lifespan for faster disappearance
   };
-  s.osc.freq(s.freq * Math.pow(2, random([-1,0]))); // random octave shift down
+  s.osc.freq(s.freq * Math.pow(2, random([-1,0]))); 
   s.osc.amp(0.3, 0.01);
+  s.osc.mod = 0.001;
   s.osc.start();
-  s.osc.mod = 0.001; // slight wobble
 
-  // attach reverb
-  reverb.process(s.osc, 1.5, 0.2); // reverbTime, decayRate
+  reverb.process(s.osc, 1.2, 0.1);
 
   shapes.push(s);
 
@@ -83,14 +90,6 @@ function keyPressed() {
 
 function keyReleased() {
   let k = key.toUpperCase();
-  let shapeIndex = shapes.findIndex(s => s.freq === keyMap[k]?.freq);
-  if(shapeIndex>=0){
-    let s = shapes[shapeIndex];
-    s.osc.amp(0,0.5);
-    s.osc.stop(0.5);
-    shapes.splice(shapeIndex,1);
-  }
-
   delete activeKeys[k];
   updateChord();
 }
@@ -100,8 +99,8 @@ function updateChord(){
   let boxKeys = Object.keys(activeKeys).filter(k=>activeKeys[k].type==='box');
 
   for(let o of chordOscs){
-    o.amp(0,0.3);
-    o.stop(0.3);
+    o.amp(0,0.2);
+    o.stop(0.2);
   }
   chordOscs = [];
 
@@ -112,7 +111,7 @@ function updateChord(){
       osc.freq(highestFreq * Math.pow(2, interval/12));
       osc.amp(0.2,0.01);
       osc.start();
-      reverb.process(osc,1.2,0.15); // attach same soft reverb
+      reverb.process(osc,1,0.1);
       chordOscs.push(osc);
     });
   }
