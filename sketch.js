@@ -1,6 +1,6 @@
 let shapes = [];
 let keysUsed = 'drcfvtgbyhnujkm';
-let notes = [146.83, 164.81, 174.61, 185.00, 196.00, 207.65, 220.00, 233.08, 246.94, 261.63]; // 3 octaves example
+let baseNotes = [146.83, 164.81, 174.61, 185.00, 196.00, 207.65, 220.00, 233.08]; // C excluded
 let reverb, delay;
 
 function setup() {
@@ -16,7 +16,6 @@ function draw() {
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
 
-    // Move shapes
     s.x += s.vx;
     s.y += s.vy;
 
@@ -40,8 +39,10 @@ function draw() {
     // Fade out
     s.opacity -= 3;
     if (s.opacity <= 0) {
-      s.osc.amp(0, 0.1);
-      s.osc.stop();
+      s.osc1.amp(0, 0.1);
+      s.osc2.amp(0, 0.1);
+      s.osc1.stop();
+      s.osc2.stop();
       shapes.splice(i, 1);
     }
   }
@@ -52,17 +53,26 @@ function keyPressed() {
   let k = key.toLowerCase();
   if (!keysUsed.includes(k)) return;
 
-  // Random note from 3 octaves
-  let freq = random(notes) * pow(2, floor(random(3))); // 3 octaves
+  // Select one of 3 octaves clearly
+  let octaveMultiplier = pow(2, floor(random(3))); 
+  let freqBase = random(baseNotes) * octaveMultiplier;
 
-  // Plucked sound
-  let osc = new p5.Oscillator('triangle');
-  osc.freq(freq + random(-1,1)); // slight wobble
-  osc.amp(0.5, 0.02);
-  osc.start();
+  // Pluck oscillator
+  let osc1 = new p5.Oscillator('triangle');
+  osc1.freq(freqBase + random(-1,1)); 
+  osc1.amp(0.3, 0.02);
+  osc1.start();
 
-  reverb.process(osc, 3, 2); // dreamy
-  delay.process(osc, 0.2, 0.3, 500);
+  // Flute oscillator (soft sine)
+  let osc2 = new p5.Oscillator('sine');
+  osc2.freq(freqBase); 
+  osc2.amp(0.2, 0.02);
+  osc2.start();
+
+  reverb.process(osc1, 3, 2);
+  reverb.process(osc2, 3, 2);
+  delay.process(osc1, 0.2, 0.3, 500);
+  delay.process(osc2, 0.2, 0.3, 500);
 
   let s = {
     x: random(width),
@@ -71,7 +81,8 @@ function keyPressed() {
     vy: random(-1,1),
     size: random(30, 70),
     type: random(['circle','square']),
-    osc: osc,
+    osc1: osc1,
+    osc2: osc2,
     opacity: 255,
     glow: 150,
     trail: []
