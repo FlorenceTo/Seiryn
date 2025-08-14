@@ -1,106 +1,103 @@
 let shapes = [];
-let keysAllowed = 'ertyuisdfghjklxcvbnm'.split('');
-let scaleFreqs = []; // Enigmatic scale frequencies
+let activeKeys = {};
+let chordOscs = [];
+
+// skipping C, starting from interval 3
+let keyMap = {
+  'D': { type:'sphere', freq: 146.83 }, // D3
+  'R': { type:'box',    freq: 164.81 }, // E3
+  'C': { type:'sphere', freq: 185.00 }, // F#3
+  'F': { type:'box',    freq: 207.65 }, // G#3
+  'V': { type:'sphere', freq: 233.08 }, // A#3
+  'T': { type:'box',    freq: 246.94 }, // B3
+  'G': { type:'sphere', freq: 293.66 }, // D4
+  'B': { type:'box',    freq: 329.63 }, // E4
+  'Y': { type:'sphere', freq: 369.99 }, // F#4
+  'H': { type:'box',    freq: 415.30 }, // G#4
+  'N': { type:'sphere', freq: 466.16 }, // A#4
+  'U': { type:'box',    freq: 493.88 }, // B4
+  'J': { type:'sphere', freq: 587.33 }, // D5
+  'K': { type:'box',    freq: 659.25 }, // E5
+  'M': { type:'sphere', freq: 739.99 }  // F#5
+};
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   noStroke();
-
-  // Build Enigmatic scale over 2 octaves (C, Db, E, F#, G#, A#, B)
-  let baseFreqs = [261.63, 277.18, 329.63, 369.99, 415.30, 466.16, 493.88];
-  for (let octave = 2; octave <= 4; octave++) {
-    baseFreqs.forEach(f => scaleFreqs.push(f * pow(2, octave - 4)));
-  }
 }
 
 function draw() {
-  background(0);
+  background(0, 50);
 
-  // Draw and move shapes
-  for (let i = 0; i < shapes.length; i++) {
-    let s = shapes[i];
-
-    // Movement
+  for (let s of shapes) {
     s.x += s.vx;
     s.y += s.vy;
-
-    // Bounce from edges
     if (s.x < 0 || s.x > width) s.vx *= -1;
     if (s.y < 0 || s.y > height) s.vy *= -1;
 
-    // Collision detection
-    for (let j = i + 1; j < shapes.length; j++) {
-      let o = shapes[j];
-      let d = dist(s.x, s.y, o.x, o.y);
-      if (d < (s.size + o.size) / 2) {
-        if (!s.collided && !o.collided) {
-          s.collided = o.collided = true;
-          let lowFreq = s.freq / 4; // 2 octaves down
-          playPluck(s, 0, lowFreq);
-          playPluck(o, 0, lowFreq);
-          s.glow = o.glow = 255;
-        }
-      }
-    }
-
-    // Glow decay
-    s.glow = max(0, s.glow - 3);
-
-    // Draw shape
     push();
     translate(s.x, s.y);
-    fill(255, s.glow > 0 ? 255 : 255); // base white
-    stroke(255, 0, 0, s.glow); // red glow border
-    strokeWeight(2);
-    if (s.type === 'circle') {
-      ellipse(0, 0, s.size);
-    } else {
-      rectMode(CENTER);
-      rect(0, 0, s.size, s.size);
+    for(let i=3;i>0;i--){
+      fill(255, 50, 50*(i/3));
+      ellipse(0,0,s.size+i*5);
     }
+    fill(255);
+    if(s.type==='sphere') ellipse(0,0,s.size);
+    else rectMode(CENTER), rect(0,0,s.size,s.size);
     pop();
   }
 }
 
 function keyPressed() {
+  let k = key.toUpperCase();
+  if (!keyMap[k]) return;
+
   userStartAudio();
-  let k = key.toLowerCase();
-  if (!keysAllowed.includes(k)) return;
+  activeKeys[k] = keyMap[k];
 
-  let type = random(['circle', 'square']);
-  let freq = random(scaleFreqs); // random note in scale
-
-  let shape = {
-    x: random(width),
-    y: random(height),
-    vx: random(-2, 2),
-    vy: random(-2, 2),
-    size: random(30, 60),
-    type: type,
-    glow: 255,
-    freq: freq,
-    collided: false
+  let config = keyMap[k];
+  let s = {
+    x: random(width), y: random(height),
+    vx: random(-1,1), vy: random(-1,1),
+    type: config.type,
+    size: 50,
+    freq: config.freq
   };
+  shapes.push(s);
 
-  playPluck(shape, 0, freq);
-  shapes.push(shape);
+  let sphereKeys = Object.keys(activeKeys).filter(k=>activeKeys[k].type==='sphere');
+  let boxKeys = Object.keys(activeKeys).filter(k=>activeKeys[k].type==='box');
+
+  if(sphereKeys.length>0 && boxKeys.length>0){
+    let highestFreq = max([...sphereKeys,...boxKeys].map(k=>activeKeys[k].freq));
+    chordOscs = [];
+    [0,4,7].forEach(interval=>{
+      let osc = new p5.Oscillator('triangle');
+      osc.freq(highestFreq * Math.pow(2, interval/12));
+      osc.amp(0.4,0.01);
+      osc.start();
+      chordOscs.push(osc);
+    });
+  } else stopChord();
 }
 
-function playPluck(shape, time, freq) {
-  let env = new p5.Envelope();
-  env.setADSR(0.01, 0.3, 0.0, 0.1); // pluck-like
-  env.setRange(0.5, 0);
+function keyReleased() {
+  let k = key.toUpperCase();
+  delete activeKeys[k];
 
-  let osc = new p5.Oscillator('triangle');
-  osc.freq(freq);
-  osc.start();
-  env.play(osc, time);
+  let sphereKeys = Object.keys(activeKeys).filter(k=>activeKeys[k].type==='sphere');
+  let boxKeys = Object.keys(activeKeys).filter(k=>activeKeys[k].type==='box');
+  if(sphereKeys.length===0 || boxKeys.length===0) stopChord();
+}
 
-  let delay = new p5.Delay();
-  delay.process(osc, 0.1, 0.2, 2000); // short delay
+function stopChord(){
+  for(let o of chordOscs){
+    o.amp(0,0.5);
+    o.stop(0.5);
+  }
+  chordOscs=[];
+}
 
-  let reverb = new p5.Reverb();
-  reverb.process(osc, 1, 2); // short, dreamy reverb
-
-  osc.stop(time + 1.5); // free memory
+function windowResized(){
+  resizeCanvas(windowWidth, windowHeight);
 }
