@@ -1,122 +1,99 @@
 let shapes = [];
-let activeKeys = {};
-let chordOscs = [];
-let reverb;
-
-let keyMap = {
-  'D': { type:'sphere', freq: 146.83 },
-  'R': { type:'box',    freq: 164.81 },
-  'C': { type:'sphere', freq: 185.00 },
-  'F': { type:'box',    freq: 207.65 },
-  'V': { type:'sphere', freq: 233.08 },
-  'T': { type:'box',    freq: 246.94 },
-  'G': { type:'sphere', freq: 293.66 },
-  'B': { type:'box',    freq: 329.63 },
-  'Y': { type:'sphere', freq: 369.99 },
-  'H': { type:'box',    freq: 415.30 },
-  'N': { type:'sphere', freq: 466.16 },
-  'U': { type:'box',    freq: 493.88 },
-  'J': { type:'sphere', freq: 587.33 },
-  'K': { type:'box',    freq: 659.25 },
-  'M': { type:'sphere', freq: 739.99 }
-};
+let keyMap = 'drcfvtgbyhnujkm';
+let freqs = [146.83, 164.81, 174.61, 185.00, 196.00, 207.65, 220.00]; // D3 to A#3
+let pressedKeys = {};
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  noStroke();
-  reverb = new p5.Reverb();
 }
 
 function draw() {
-  // Very quick trail fade
-  background(0, 30);
+  background(0); // clear frame
 
-  for (let i = shapes.length-1; i >= 0; i--) {
+  for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
-    s.x += s.vx;
-    s.y += s.vy;
-    if (s.x < 0 || s.x > width) s.vx *= -1;
-    if (s.y < 0 || s.y > height) s.vy *= -1;
-
     let lifeProgress = (millis() - s.startTime) / s.lifespan;
+
     if (lifeProgress >= 1) {
-      s.osc.amp(0, 0.1);
-      s.osc.stop(0.1);
-      shapes.splice(i,1);
+      s.osc.amp(0, 0.05);
+      s.osc.stop(0.05);
+      shapes.splice(i, 1);
       continue;
     }
 
+    // Trail update
+    s.trail.push({x: s.x, y: s.y, alpha: 255 * (1 - lifeProgress)});
+    if (s.trail.length > 5) s.trail.shift();
+
+    // Draw trail
+    for (let t of s.trail) {
+      let glow = sin(frameCount * 0.2) * 50 + 50;
+      push();
+      translate(t.x, t.y);
+      stroke(255, 0, 0, glow * (t.alpha / 255));
+      strokeWeight(1);
+      fill(255, t.alpha * 0.4);
+      if (s.type === 'circle') ellipse(0, 0, s.size * 0.5);
+      else rectMode(CENTER), rect(0, 0, s.size * 0.5, s.size * 0.5);
+      pop();
+    }
+
+    // Draw main shape
     let glow = sin(frameCount * 0.2) * 50 + 50;
     push();
     translate(s.x, s.y);
     stroke(255, 0, 0, glow);
     strokeWeight(1);
-    fill(255, 255 * (1-lifeProgress));
-    if(s.type==='sphere') ellipse(0,0,s.size*(1-lifeProgress));
-    else rectMode(CENTER), rect(0,0,s.size*(1-lifeProgress),s.size*(1-lifeProgress));
+    fill(255, 255 * (1 - lifeProgress));
+    if (s.type === 'circle') ellipse(0, 0, s.size * (1 - lifeProgress));
+    else rectMode(CENTER), rect(0, 0, s.size * (1 - lifeProgress), s.size * (1 - lifeProgress));
     pop();
   }
 }
 
 function keyPressed() {
-  let k = key.toUpperCase();
-  if (!keyMap[k]) return;
+  let k = key.toLowerCase();
+  if (!keyMap.includes(k) || pressedKeys[k]) return;
 
-  userStartAudio();
-  activeKeys[k] = keyMap[k];
+  pressedKeys[k] = true;
 
-  let config = keyMap[k];
-  let s = {
-    x: random(width), y: random(height),
-    vx: random(-1,1), vy: random(-1,1),
-    type: config.type,
-    size: 50,
-    freq: config.freq,
-    osc: new p5.Oscillator('triangle'),
+  let x = random(100, width-100);
+  let y = random(100, height-100);
+  let type = random(['circle','square']);
+  let osc = new p5.Oscillator('triangle');
+  let baseFreq = random(freqs);
+  let octaveShift = random([0, 12]);
+  osc.freq(baseFreq * pow(2, octaveShift/12) + random(-1,1));
+  osc.amp(0);
+  osc.start();
+
+  // Pluck envelope
+  let env = new p5.Envelope();
+  env.setADSR(0.001, 0.1, 0.2, 0.2);
+  env.setRange(0.5, 0);
+  env.play(osc);
+
+  shapes.push({
+    x, y, size: random(40, 80), type,
+    osc, env,
+    trail: [],
     startTime: millis(),
-    lifespan: 600 // shorter lifespan for faster disappearance
-  };
-  s.osc.freq(s.freq * Math.pow(2, random([-1,0]))); 
-  s.osc.amp(0.3, 0.01);
-  s.osc.mod = 0.001;
-  s.osc.start();
+    lifespan: 500
+  });
 
-  reverb.process(s.osc, 1.2, 0.1);
-
-  shapes.push(s);
-
-  updateChord();
+  // Check harmony chord if circle+square pressed together
+  let other = shapes.find(s => s.type !== type);
+  if (other) {
+    let chordOsc = new p5.Oscillator('triangle');
+    let highFreq = max(baseFreq, other.osc.freq().value());
+    chordOsc.freq(highFreq);
+    chordOsc.amp(0.3);
+    chordOsc.start();
+    setTimeout(() => chordOsc.stop(), 500);
+  }
 }
 
 function keyReleased() {
-  let k = key.toUpperCase();
-  delete activeKeys[k];
-  updateChord();
-}
-
-function updateChord(){
-  let sphereKeys = Object.keys(activeKeys).filter(k=>activeKeys[k].type==='sphere');
-  let boxKeys = Object.keys(activeKeys).filter(k=>activeKeys[k].type==='box');
-
-  for(let o of chordOscs){
-    o.amp(0,0.2);
-    o.stop(0.2);
-  }
-  chordOscs = [];
-
-  if(sphereKeys.length>0 && boxKeys.length>0){
-    let highestFreq = max([...sphereKeys,...boxKeys].map(k=>activeKeys[k].freq));
-    [0,4,7].forEach(interval=>{
-      let osc = new p5.Oscillator('triangle');
-      osc.freq(highestFreq * Math.pow(2, interval/12));
-      osc.amp(0.2,0.01);
-      osc.start();
-      reverb.process(osc,1,0.1);
-      chordOscs.push(osc);
-    });
-  }
-}
-
-function windowResized(){
-  resizeCanvas(windowWidth, windowHeight);
+  let k = key.toLowerCase();
+  if (pressedKeys[k]) delete pressedKeys[k];
 }
