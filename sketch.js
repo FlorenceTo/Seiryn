@@ -1,9 +1,9 @@
 let shapes = [];
 let keysUsed = 'drcfvtgbyhnujkm';
-let baseNotes = [146.83, 164.81, 174.61, 185.00, 196.00, 207.65, 220.00, 233.08]; // C excluded
+let baseNotes = [146.83, 164.81, 174.61, 185.00, 196.00, 207.65, 220.00, 233.08]; // D3, E3… no C
 let reverb, delay;
-
-let activeKeys = {}; // track pressed keys
+let activeKeys = {};
+let harmonyOsc = null;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -13,7 +13,7 @@ function setup() {
 }
 
 function draw() {
-  background(0, 50); // fade trails slowly
+  background(0, 50);
 
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
@@ -21,16 +21,15 @@ function draw() {
     s.x += s.vx;
     s.y += s.vy;
 
-    // Draw trail
     for (let t of s.trail) {
-      fill(255, t.opacity, t.opacity);
-      ellipse(t.x, t.y, s.size * t.scale);
+      fill(255, t.opacity);
+      if (s.type === 'circle') ellipse(t.x, t.y, s.size * t.scale);
+      else rectMode(CENTER), rect(t.x, t.y, s.size * t.scale, s.size * t.scale);
       t.opacity -= 10;
     }
     s.trail.push({ x: s.x, y: s.y, opacity: 150, scale: random(0.5, 1.2) });
     if (s.trail.length > 20) s.trail.shift();
 
-    // Draw shape with green glow pulse
     fill(255);
     stroke(0, 255, 0, s.glow);
     strokeWeight(1);
@@ -38,8 +37,7 @@ function draw() {
     else rectMode(CENTER), rect(s.x, s.y, s.size, s.size);
     s.glow = max(0, s.glow - 5);
 
-    // Fade out shapes
-    s.opacity -= 3;
+    s.opacity -= 5;
     if (s.opacity <= 0) {
       s.osc1.amp(0, 0.05);
       s.osc2.amp(0, 0.05);
@@ -58,23 +56,19 @@ function keyPressed() {
   if (!activeKeys[k]) {
     activeKeys[k] = true;
 
-    // Select one of 3 octaves clearly
     let octaveMultiplier = pow(2, floor(random(3))); 
     let freqBase = random(baseNotes) * octaveMultiplier;
 
-    // Pluck oscillator
     let osc1 = new p5.Oscillator('triangle');
-    osc1.freq(freqBase + random(-1,1)); 
+    osc1.freq(freqBase + random(-1,1));
     osc1.amp(0.3, 0.02);
     osc1.start();
 
-    // Flute oscillator (soft sine)
     let osc2 = new p5.Oscillator('sine');
-    osc2.freq(freqBase); 
+    osc2.freq(freqBase);
     osc2.amp(0.2, 0.02);
     osc2.start();
 
-    // Reverb & Delay with more feedback
     reverb.process(osc1, 3.5, 2.5);
     reverb.process(osc2, 3.5, 2.5);
     delay.process(osc1, 0.3, 0.4, 500);
@@ -96,7 +90,6 @@ function keyPressed() {
     };
     shapes.push(s);
 
-    // Check for harmony: square + circle pressed together
     checkHarmony();
   }
 }
@@ -104,21 +97,18 @@ function keyPressed() {
 function keyReleased() {
   let k = key.toLowerCase();
   activeKeys[k] = false;
-  checkHarmony(); // stop harmony if one key released
+  checkHarmony();
 }
-
-let harmonyOsc = null;
 
 function checkHarmony() {
   let circleKey = shapes.find(s => s.type === 'circle' && activeKeys[s.key]);
   let squareKey = shapes.find(s => s.type === 'square' && activeKeys[s.key]);
 
   if (circleKey && squareKey) {
-    // start harmony if not already
     if (!harmonyOsc) {
       let highFreq = max(circleKey.osc1.freq().value(), squareKey.osc1.freq().value());
       harmonyOsc = new p5.Oscillator('triangle');
-      harmonyOsc.freq([highFreq, highFreq*1.2599, highFreq*1.4983]); // simple major chord intervals
+      harmonyOsc.freq([highFreq, highFreq*1.2599, highFreq*1.4983]);
       harmonyOsc.amp(0.3, 0.05);
       harmonyOsc.start();
 
