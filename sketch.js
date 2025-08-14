@@ -1,38 +1,37 @@
 let shapes = [];
+let camZoom = 0;
+
+// Only these keys are active
+let activeKeys = 'esxcdrfvtgbhynjuiklm';
+
+// Map each key to a note frequency (plucked/flute tones) across 3 octaves
 let keyMap = {
-  'e': 'D4', 's': 'E4', 'x': 'F#4', 'c': 'G#4', 'd': 'A#4',
-  'r': 'B4', 'f': 'D5', 'v': 'E5', 't': 'F#5', 'g': 'G#5',
-  'b': 'A#5', 'h': 'B5', 'y': 'D6', 'n': 'E6', 'j': 'F#6',
-  'u': 'G#6', 'i': 'A#6', 'k': 'B6', 'l': 'D7', 'm': 'E7'
+  'e': 196,   // G3
+  's': 220,   // A3
+  'x': 246.94, // B3
+  'c': 261.63, // C4 (skip if you want no C)
+  'd': 293.66, // D4
+  'r': 329.63, // E4
+  'f': 349.23, // F4
+  'v': 392,    // G4
+  't': 440,    // A4
+  'g': 493.88, // B4
+  'b': 523.25, // C5 (skip C if needed)
+  'h': 587.33, // D5
+  'y': 659.25, // E5
+  'n': 698.46, // F5
+  'j': 783.99, // G5
+  'u': 880,    // A5
+  'i': 987.77, // B5
+  'k': 1046.5, // C6
+  'l': 1174.66,// D6
+  'm': 1318.51 // E6
 };
-let reverb;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  reverb = new p5.Reverb();
-}
-
-function keyPressed() {
-  let keyName = key.toLowerCase();
-  if (!keyMap[keyName]) return;
-
-  let freq = midiToFreq(noteToMidi(keyMap[keyName]));
-  let osc = new p5.Oscillator('triangle');
-  osc.freq(freq + random(-1,1)); // slight pitch wobble
-  osc.amp(0.5);
-  osc.start();
-
-  // Reverb effect
-  reverb.process(osc, 3, 2); // more reverb
-
-  // Random position
-  let x = random(width);
-  let y = random(height);
-
-  // Random shape
-  let type = random(['circle', 'square']);
-
-  shapes.push({x, y, size: 50, type, osc});
+  noStroke();
+  userStartAudio();
 }
 
 function draw() {
@@ -40,25 +39,49 @@ function draw() {
 
   for (let i = shapes.length - 1; i >= 0; i--) {
     let s = shapes[i];
+    push();
+    translate(s.x, s.y);
+    fill(255, s.opacity); // all white
+    ellipse(s.x, s.y, s.size);
+    pop();
 
-    fill(255);
-    stroke(0, 255, 0);
-    strokeWeight(1);
-
-    if (s.type === 'circle') ellipse(s.x, s.y, s.size);
-    else rectMode(CENTER), rect(s.x, s.y, s.size, s.size);
-
-    // Fade out immediately
-    s.osc.amp(0, 0.05);
-    s.osc.stop(0.05);
-    shapes.splice(i, 1);
+    // Fade out faster
+    s.opacity -= 5;
+    if (s.opacity <= 0) {
+      s.osc.amp(0, 0.5);
+      s.osc.stop(0.5);
+      shapes.splice(i, 1);
+    }
   }
 }
 
-// Helper: convert note name to MIDI number
-function noteToMidi(note) {
-  let notes = {'C':0,'C#':1,'D':2,'D#':3,'E':4,'F':5,'F#':6,'G':7,'G#':8,'A':9,'A#':10,'B':11};
-  let octave = parseInt(note.slice(-1));
-  let key = note.slice(0, -1);
-  return 12 + notes[key] + octave*12;
+function keyPressed() {
+  let k = key.toLowerCase();
+  if (!activeKeys.includes(k)) return;
+
+  console.log('Key pressed:', k); // debug
+
+  let freq = keyMap[k];
+  let osc = new p5.Oscillator('triangle');
+  osc.freq(freq);
+  osc.start();
+  osc.amp(0.5, 0.05);
+
+  // Add short delay/reverb
+  let delay = new p5.Delay();
+  delay.process(osc, 0.3, 0.4, 2000);
+
+  let s = {
+    x: random(width),
+    y: random(height),
+    size: random(30, 60),
+    opacity: 255,
+    osc: osc
+  };
+
+  shapes.push(s);
+}
+
+function keyReleased() {
+  // optionally fade out
 }
